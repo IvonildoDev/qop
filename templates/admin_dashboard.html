@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QOP - Painel Administrativo</title>
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-container">
+                <div class="logo">QOP</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Dashboard -->
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">Painel Administrativo</h1>
+            <div class="user-controls">
+                <span class="user-info">Admin: <strong>{{ username }}</strong></span>
+                <button id="logout-button" class="logout-button">Sair</button>
+            </div>
+        </div>
+
+        <div class="admin-tabs">
+            <div class="tab active" data-tab="users">Usuários</div>
+            <div class="tab" data-tab="quizzes">Checklists</div>
+            <div class="tab" data-tab="statistics">Estatísticas</div>
+        </div>
+
+        <div id="users-tab" class="tab-content active">
+            <div class="actions-row" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <button id="add-user-btn" class="btn-primary">
+                    <i class="fas fa-plus"></i> Adicionar Usuário
+                </button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Nome de Usuário</th>
+                        <th>Data de Criação</th>
+                        <th>Permissão</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    <tr>
+                        <td colspan="4">Carregando usuários...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="quizzes-tab" class="tab-content">
+            <div id="quizzes-list">
+                <p>Carregando checklists...</p>
+            </div>
+        </div>
+
+        <div id="statistics-tab" class="tab-content">
+            <div class="statistics-controls">
+                <div class="period-selector">
+                    <label>Período: </label>
+                    <select id="statistics-period">
+                        <option value="daily">Diário</option>
+                        <option value="monthly">Mensal</option>
+                        <option value="all">Total</option>
+                    </select>
+                </div>
+                <button id="refresh-statistics" class="btn-action">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+
+            <div class="statistics-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">Total de Checklists</div>
+                    <div class="stat-card-value" id="total-quizzes">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">Usuários Ativos</div>
+                    <div class="stat-card-value" id="active-users">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">Não Conformidades</div>
+                    <div class="stat-card-value" id="total-nc">-</div>
+                </div>
+            </div>
+
+            <div class="statistics-grid">
+                <div class="statistics-chart">
+                    <h3>Checklists por <span id="period-label">Dia</span></h3>
+                    <canvas id="quizzes-chart"></canvas>
+                </div>
+
+                <div class="statistics-by-user">
+                    <h3>Checklists por Usuário</h3>
+                    <div id="user-statistics" class="user-stats-container">
+                        <p>Carregando dados...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-quizzes">
+                <h3>Checklists Realizados Recentemente</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Usuário</th>
+                            <th>Tipo</th>
+                            <th>Questões</th>
+                            <th>N/C</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-quizzes-body">
+                        <tr>
+                            <td colspan="6">Carregando checklists recentes...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar usuário -->
+    <div id="add-user-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h3>Adicionar Usuário</h3>
+                <button class="admin-modal-close">&times;</button>
+            </div>
+            <form id="add-user-form">
+                <div class="form-group">
+                    <label for="new-username">Nome de Usuário</label>
+                    <input type="text" id="new-username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">Senha</label>
+                    <input type="password" id="new-password" class="form-control" required>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="is-admin" class="form-check-input">
+                    <label for="is-admin" class="form-check-label">Usuário é administrador</label>
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn-action admin-modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <p class="developer-info">
+                Desenvolvido por <span class="developer-name">Ivonildo Lima</span>
+                <span class="year">&copy; 2025</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/admin.js"></script>
+</body>
+
+</html>
