@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QOP - Detalhes do Checklist</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-container">
+                <div class="logo">QOP</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">Detalhes do Checklist</h1>
+            <button id="back-button" class="btn-action">Voltar ao Dashboard</button>
+        </div>
+
+        <div class="quiz-details-container">
+            <div class="quiz-info-box">
+                <h3>Informações do Checklist</h3>
+                <div id="quiz-info">
+                    <p>Carregando informações...</p>
+                </div>
+            </div>
+
+            <div class="questions-box">
+                <h3>Perguntas e Respostas</h3>
+                <div class="answer-legend">
+                    <span class="legend-item answer-ok">C = Conforme</span>
+                    <span class="legend-item answer-problem">N/C = Não Conforme</span>
+                    <span class="legend-item answer-na">N/A = Não se Aplica</span>
+                </div>
+                <div id="questions-container">
+                    <p>Carregando perguntas e respostas...</p>
+                </div>
+            </div>
+
+            <div class="observations-box">
+                <h3>Observações</h3>
+                <div class="observation-text" id="observations">Carregando observações...</div>
+            </div>
+
+            <div class="location-box" id="location-container" style="display: none;">
+                <!-- Conteúdo será preenchido via JavaScript -->
+            </div>
+
+            <div class="photos-box" id="photos-container" style="display: none;">
+                <!-- Conteúdo será preenchido via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <p class="developer-info">
+                Desenvolvido por <span class="developer-name">Ivonildo Lima</span>
+                <span class="year">&copy; 2025</span>
+            </p>
+        </div>
+    </footer>
+
+    <script src="/static/js/admin-quiz-details.js"></script>
+</body>
+
+</html>
