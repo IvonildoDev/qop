@@ -293,6 +293,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Configurar o botão para fechar o modal de detalhes
+    const closeButtons = document.querySelectorAll('.close-button');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+
+    // Fechar modal clicando fora dele
+    window.addEventListener('click', function (event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+
     // --- Lógica de Logout ---
     if (logoutButton) {
         logoutButton.addEventListener('click', async function () {
@@ -766,166 +787,126 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Função para exibir detalhes de um item do histórico
+    // Modificar a função showHistoryDetails
     async function showHistoryDetails(quizId) {
-        // Estruturar o modal com header e body
-        document.querySelector('#history-detail-modal .modal-content').innerHTML = `
-            <div class="modal-header">
-                <h2 id="history-detail-title">Carregando detalhes...</h2>
-                <button class="close-button">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="history-info">
-                    <p><strong>Data:</strong> <span id="history-detail-date">Carregando...</span></p>
-                    <p><strong>Tipo:</strong> <span id="history-detail-type">Carregando...</span></p>
-                </div>
-                
-                <!-- Legenda no histórico -->
-                <div class="answer-legend">
-                    <strong>Legenda:</strong>
-                    <span class="legend-item C">C = Conforme</span>
-                    <span class="legend-item NC">N/C = Não Conforme</span>
-                    <span class="legend-item NA">N/A = Não se Aplica</span>
-                </div>
-                
-                <div id="history-detail-questions">
-                    <p>Carregando perguntas...</p>
-                </div>
-                
-                <div id="history-detail-observations" class="observations-section">
-                    <h3>Observações</h3>
-                    <div class="observation-text">Carregando...</div>
-                </div>
-                
-                <div id="history-detail-photos" class="photos-section">
-                    <h3>Fotos</h3>
-                    <div class="photo-container">
-                        <p>Carregando fotos...</p>
-                    </div>
-                </div>
-                <div id="history-detail-location"></div>
-            </div>
-        `;
-
-        // Reconectar os elementos após recriar o HTML
-        const historyModal = document.getElementById('history-detail-modal');
-        const historyDetailTitle = historyModal.querySelector('#history-detail-title');
-        const historyDetailDate = historyModal.querySelector('#history-detail-date');
-        const historyDetailType = historyModal.querySelector('#history-detail-type');
-        const historyDetailQuestions = historyModal.querySelector('#history-detail-questions');
-        const historyDetailObservations = historyModal.querySelector('#history-detail-observations .observation-text');
-        const historyDetailPhotos = historyModal.querySelector('#history-detail-photos .photo-container');
-
-        // Fechar o modal ao clicar no botão X
-        historyModal.querySelector('.close-button').addEventListener('click', () => {
-            historyModal.style.display = 'none';
-        });
-
-        // Exibir o modal
-        historyModal.style.display = 'block';
-
         try {
-            const response = await fetch(`${API_BASE_URL}/quiz/${quizId}/details`, {
+            // Código existente...
+
+            const response = await fetch(`/quiz/${quizId}/details`, {
                 credentials: 'include'
             });
 
-            const data = await response.json();
-
-            if (response.ok && data.details) {
-                // Atualizar cabeçalho do modal
-                historyDetailTitle.textContent = `Detalhes do Checklist`;
-
-                // Formatar a data em formato brasileiro
-                const formattedDate = new Date(data.details.date).toLocaleString('pt-BR');
-                historyDetailDate.textContent = formattedDate;
-
-                // Mostrar tipo do checklist
-                const quizTypes = {
-                    'pre_operacional': 'Checklist Pré-Operacional',
-                    'caminhao': 'Checklist Caminhão',
-                    'carga': 'Checklist Carga'
-                };
-                historyDetailType.textContent = quizTypes[data.details.type] || data.details.type;
-
-                // Limpar conteúdo anterior
-                historyDetailQuestions.innerHTML = '';
-
-                // Popular perguntas e respostas
-                if (data.details.questions && data.details.questions.length > 0) {
-                    data.details.questions.forEach(q => {
-                        const questionDiv = document.createElement('div');
-                        questionDiv.className = `question-item ${q.answer}`;
-
-                        const questionText = document.createElement('p');
-                        questionText.textContent = `${q.number}. ${q.text}`;
-                        questionDiv.appendChild(questionText);
-
-                        const answerSpan = document.createElement('span');
-                        answerSpan.className = `answer ${q.answer}`;
-                        answerSpan.textContent = q.answer;
-                        questionDiv.appendChild(answerSpan);
-
-                        historyDetailQuestions.appendChild(questionDiv);
-                    });
-                } else {
-                    historyDetailQuestions.innerHTML = '<p class="no-data">Nenhuma pergunta encontrada.</p>';
-                }
-
-                // Mostrar observações
-                historyDetailObservations.textContent = data.details.observations || 'Nenhuma observação registrada.';
-
-                // Atualização da parte que adiciona a localização
-                if (data.details.location) {
-                    const locationContainer = document.getElementById('history-detail-location');
-                    locationContainer.className = 'location-section';
-                    locationContainer.innerHTML = `
-                        <h3>Localização Registrada</h3>
-                        <div class="location-info">
-                            <p><strong>Latitude:</strong> ${data.details.location.latitude.toFixed(6)}</p>
-                            <p><strong>Longitude:</strong> ${data.details.location.longitude.toFixed(6)}</p>
-                            <p><strong>Precisão:</strong> ${data.details.location.accuracy.toFixed(1)} metros</p>
-                            <p><a href="https://www.google.com/maps?q=${data.details.location.latitude},${data.details.location.longitude}" target="_blank">Ver no Google Maps</a></p>
-                        </div>
-                    `;
-                } else {
-                    // Esconder a seção se não houver dados de localização
-                    document.getElementById('history-detail-location').style.display = 'none';
-                }
-
-                // Mostrar fotos
-                historyDetailPhotos.innerHTML = '';
-                if (data.details.photos && data.details.photos.length > 0) {
-                    data.details.photos.forEach(photo => {
-                        const photoDiv = document.createElement('div');
-                        photoDiv.className = 'photo';
-
-                        const img = document.createElement('img');
-                        img.src = `/${photo.path}`;
-                        img.alt = 'Foto do checklist';
-                        img.loading = "lazy"; // Carregamento lazy para melhor performance
-
-                        // Permitir visualização em tela cheia ao clicar
-                        img.onclick = function () {
-                            window.open(this.src, '_blank');
-                        };
-
-                        photoDiv.appendChild(img);
-                        historyDetailPhotos.appendChild(photoDiv);
-                    });
-                } else {
-                    historyDetailPhotos.innerHTML = '<p class="no-data">Nenhuma foto anexada.</p>';
-                }
-
-            } else {
-                historyDetailTitle.textContent = 'Erro';
-                historyDetailQuestions.innerHTML = '<p class="error">Erro ao carregar detalhes do checklist.</p>';
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
             }
 
+            const data = await response.json();
+            console.log("Dados recebidos dos detalhes:", data);
+
+            // Construir o HTML de detalhes
+            let html = `
+                <div class="history-detail-header">
+                    <h3>${formatQuizType(data.details.type)}</h3>
+                    <p class="timestamp">Data: ${new Date(data.details.date).toLocaleString('pt-BR')}</p>
+                </div>
+            `;
+
+            // ADICIONE ESTA SEÇÃO: Criar tabela de perguntas e respostas
+            html += `
+                <div class="questions-list">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Pergunta</th>
+                                <th>Resposta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Iterar sobre as questões e mostrar as respostas
+            data.details.questions.forEach(question => {
+                html += `
+                    <tr>
+                        <td>${question.text}</td>
+                        <td class="${getAnswerClass(question.answer)}">${formatAnswer(question.answer)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Seção de observações (já existente)
+            html += `
+                <div class="observations-section">
+                    <h4>Observações:</h4>
+                    <div class="observation-text">
+                        ${data.details.observations ? data.details.observations : 'Nenhuma observação registrada.'}
+                    </div>
+                </div>
+            `;
+
+            // Se houver fotos, adicionar seção de fotos
+            if (data.details.photos && data.details.photos.length > 0) {
+                html += `
+                    <div class="photos-section">
+                        <h4>Fotos:</h4>
+                        <div class="photo-gallery">
+                `;
+
+                data.details.photos.forEach(photo => {
+                    html += `
+                        <div class="history-photo">
+                            <a href="${photo.path}" target="_blank">
+                                <img src="${photo.path}" alt="Foto do checklist">
+                            </a>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Atualizar o conteúdo do modal
+            document.getElementById('history-detail-content').innerHTML = html;
+
+            // Exibir o modal
+            document.getElementById('history-detail-modal').style.display = 'block';
+
         } catch (error) {
-            console.error('Erro ao buscar detalhes do checklist:', error);
-            historyDetailTitle.textContent = 'Erro';
-            historyDetailQuestions.innerHTML = '<p class="error">Erro de conexão ao buscar detalhes.</p>';
+            console.error("Erro ao buscar detalhes:", error);
         }
+    }
+
+    // Funções auxiliares
+    function formatQuizType(type) {
+        const types = {
+            'pre_operacional': 'Checklist Pré-Operacional',
+            'caminhao': 'Checklist Caminhão',
+            'carga': 'Checklist Carga'
+        };
+        return types[type] || type;
+    }
+
+    function getAnswerClass(answer) {
+        if (answer === 'C') return 'answer-conformity';
+        if (answer === 'NC' || answer === 'N/C') return 'answer-nonconformity';
+        if (answer === 'NA' || answer === 'N/A') return 'answer-notapplicable';
+        return '';
+    }
+
+    function formatAnswer(answer) {
+        if (answer === 'C') return 'Conforme';
+        if (answer === 'NC' || answer === 'N/C') return 'Não Conforme';
+        if (answer === 'NA' || answer === 'N/A') return 'Não se Aplica';
+        return answer;
     }
 
     // Evento para filtro de histórico (manter o limite padrão de 7)

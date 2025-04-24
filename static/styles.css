@@ -566,6 +566,140 @@ button {
     color: #3f51b5;
 }
 
+/* Footer Styling */
+.footer {
+    background: linear-gradient(to right, #3f51b5, #5c6bc0);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 20px 0;
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.footer-column {
+    flex: 1;
+    min-width: 200px;
+    margin: 10px 20px;
+}
+
+.footer-column h4 {
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.footer-column h4::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -8px;
+    width: 40px;
+    height: 2px;
+    background-color: white;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-block;
+}
+
+.footer-links a:hover {
+    color: white;
+    transform: translateX(5px);
+}
+
+.footer-contact p {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+}
+
+.footer-contact i {
+    margin-right: 10px;
+    width: 16px;
+    text-align: center;
+}
+
+.footer-social {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.social-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    transition: all 0.3s;
+}
+
+.social-icon:hover {
+    background-color: white;
+    color: #3f51b5;
+    transform: translateY(-3px);
+}
+
+.footer-bottom {
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+    margin-top: 30px;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+/* Responsividade do footer */
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+    }
+    
+    .footer-column {
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .footer-column h4::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .footer-social {
+        justify-content: center;
+    }
+    
+    .footer-contact p {
+        justify-content: center;
+    }
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .header-container {
@@ -1196,6 +1330,26 @@ textarea:focus-visible {
     padding: 1.5rem;
 }
 
+.statistics-chart {
+    height: 400px;
+    position: relative;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.statistics-chart h3 {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#quizzes-chart {
+    max-width: 100%;
+    max-height: 350px;
+    margin: 0 auto;
+}
+
 .statistics-chart h3, .statistics-by-user h3, .recent-quizzes h3 {
     margin-top: 0;
     margin-bottom: 1.5rem;
@@ -1271,4 +1425,168 @@ textarea:focus-visible {
     .statistics-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Adicione ao seu styles.css */
+.history-observations-section {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.observations-text {
+    background-color: #f9f9f9;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #3f51b5;
+    white-space: pre-line; /* Preserva quebras de linha */
+}
+
+/* Estilos para detalhes do histórico */
+.history-detail-header {
+    margin-bottom: 20px;
+}
+
+.history-detail-header h3 {
+    color: #3f51b5;
+    margin-bottom: 5px;
+}
+
+.timestamp {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.history-table th, .history-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+.history-table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+
+.answer-conformity {
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.answer-nonconformity {
+    color: #c62828;
+    font-weight: 500;
+}
+
+.answer-notapplicable {
+    color: #757575;
+    font-weight: 500;
+}
+
+.observations-section {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.observations-section h4 {
+    margin-bottom: 10px;
+}
+
+.observation-text {
+    background-color: #f9f9f9;
+    padding: 12px 15px;
+    border-radius: 6px;
+    border-left: 4px solid #3f51b5;
+}
+
+.loading-message {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.error-message {
+    text-align: center;
+    padding: 20px;
+    color: #c62828;
+}
+
+/* Estilos para seção de fotos no histórico */
+.photos-section {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.photos-section h4 {
+    margin-bottom: 12px;
+    color: #444;
+}
+
+.photo-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.history-photo {
+    width: 150px;
+    height: 150px;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.history-photo:hover {
+    transform: scale(1.05);
+}
+
+.history-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Melhorias na seção de observações */
+.observation-text {
+    background-color: #f9f9f9;
+    padding: 12px 15px;
+    border-radius: 6px;
+    border-left: 4px solid #3f51b5;
+    line-height: 1.5;
+    white-space: pre-line; /* Preserva quebras de linha */
+}
+
+/* Estilos para localização */
+.location-section-details {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.location-data {
+    background-color: #f4f8fe;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+/* Adicione ao arquivo styles.css */
+.developer-credit {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.developer-credit strong {
+    font-weight: 600;
+    color: white;
 }

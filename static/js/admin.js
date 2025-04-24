@@ -473,10 +473,18 @@ async function loadStatistics(period) {
 
 // Função para atualizar os cards de resumo
 function updateStatisticsSummary(data) {
-    // Calcular totais
-    const totalQuizzes = data.recent_quizzes.length;
+    // Calcular totais de checklists únicos, não perguntas
+    // Obtemos isso contando entradas únicas por timestamp e usuário
+    const uniqueSubmissions = new Map();
+
+    data.recent_quizzes.forEach(quiz => {
+        const key = `${quiz.username}_${quiz.timestamp}`;
+        uniqueSubmissions.set(key, true);
+    });
+
+    const totalQuizzes = uniqueSubmissions.size;
     const activeUsers = new Set(data.recent_quizzes.map(q => q.username)).size;
-    const totalNc = data.recent_quizzes.reduce((acc, curr) => acc + curr.nc_count, 0);
+    const totalNc = data.recent_quizzes.reduce((acc, curr) => acc + (curr.nc_count || 0), 0);
 
     // Atualizar elementos na página
     document.getElementById('total-quizzes').textContent = totalQuizzes;
@@ -494,8 +502,7 @@ function updateStatisticsChart(data, period) {
         else periodLabel.textContent = 'Total';
     }
 
-    // Aqui você pode implementar um gráfico usando uma biblioteca como Chart.js
-    // Este é um exemplo simples, você precisaria adicionar a biblioteca Chart.js ao seu HTML
+    // Implementação do gráfico de pizza com Chart.js
     const chartCanvas = document.getElementById('quizzes-chart');
     if (chartCanvas && typeof Chart !== 'undefined') {
         // Limpar qualquer gráfico existente
@@ -503,76 +510,71 @@ function updateStatisticsChart(data, period) {
             chartCanvas.chart.destroy();
         }
 
-        // Preparar dados para o gráfico
+        // Preparar dados para o gráfico de pizza
         const stats = data.statistics;
-        const labels = [];
-        const datasets = {};
 
-        // Agrupar dados por data/mês
-        if (period === 'daily' || period === 'monthly') {
-            const timeField = period === 'daily' ? 'date' : 'month';
-
-            // Extrair datas/meses únicas
-            stats.forEach(stat => {
-                if (!labels.includes(stat[timeField])) {
-                    labels.push(stat[timeField]);
-                }
-
-                // Inicializar dataset para o tipo de quiz se não existir
-                if (!datasets[stat.quiz_type]) {
-                    datasets[stat.quiz_type] = {
-                        label: getQuizTypeLabel(stat.quiz_type),
-                        data: Array(labels.length).fill(0),
-                        backgroundColor: getQuizTypeColor(stat.quiz_type)
-                    };
-                }
-            });
-
-            // Preencher dados
-            stats.forEach(stat => {
-                const index = labels.indexOf(stat[timeField]);
-                if (!datasets[stat.quiz_type].data[index]) {
-                    datasets[stat.quiz_type].data[index] = 0;
-                }
-                datasets[stat.quiz_type].data[index] += stat.count;
-            });
-        } else {
-            // Gráfico geral por tipo
-            stats.forEach(stat => {
-                if (!labels.includes(stat.quiz_type)) {
-                    labels.push(stat.quiz_type);
-                }
-            });
-
-            // Criar um dataset por usuário
-            const users = [...new Set(stats.map(s => s.username))];
-            users.forEach(user => {
-                datasets[user] = {
-                    label: user,
-                    data: Array(labels.length).fill(0),
-                    backgroundColor: getRandomColor()
-                };
-            });
-
-            // Preencher dados
-            stats.forEach(stat => {
-                const index = labels.indexOf(stat.quiz_type);
-                datasets[stat.username].data[index] = stat.count;
-            });
-        }
-
-        // Criar o gráfico
-        const chartData = {
-            labels: labels,
-            datasets: Object.values(datasets)
+        // Agrupar dados por tipo de checklist
+        const quizCounts = {
+            'pre_operacional': 0,
+            'caminhao': 0,
+            'carga': 0
         };
 
+        // Somar totais por tipo
+        stats.forEach(stat => {
+            if (quizCounts[stat.quiz_type] !== undefined) {
+                quizCounts[stat.quiz_type] += parseInt(stat.count);
+            }
+        });
+
+        // Preparar dados para o gráfico
+        const pieData = {
+            labels: Object.keys(quizCounts).map(type => getQuizTypeLabel(type)),
+            datasets: [{
+                data: Object.values(quizCounts),
+                backgroundColor: [
+                    'rgba(21, 101, 192, 0.7)',  // Pré-Operacional (azul)
+                    'rgba(230, 81, 0, 0.7)',    // Caminhão (laranja)
+                    'rgba(85, 139, 47, 0.7)'    // Carga (verde)
+                ],
+                borderColor: [
+                    'rgba(21, 101, 192, 1)',
+                    'rgba(230, 81, 0, 1)',
+                    'rgba(85, 139, 47, 1)'
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        // Criar o gráfico de pizza
         chartCanvas.chart = new Chart(chartCanvas, {
-            type: 'bar',
-            data: chartData,
+            type: 'doughnut', // Pode usar 'pie' também
+            data: pieData,
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                size: 14
+                            },
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
             }
         });
     } else {
@@ -585,13 +587,16 @@ function updateUserStatistics(data) {
     const userStatsContainer = document.getElementById('user-statistics');
     if (!userStatsContainer) return;
 
-    // Agrupar por usuário
+    // Agrupar por usuário, somando apenas checklists completos
     const userCounts = {};
+
+    // Processar as estatísticas
     data.statistics.forEach(stat => {
         if (!userCounts[stat.username]) {
             userCounts[stat.username] = 0;
         }
-        userCounts[stat.username] += stat.count;
+        // Adicionar o número de checklists (não de perguntas)
+        userCounts[stat.username] += parseInt(stat.count);
     });
 
     // Converter para array e ordenar
@@ -624,13 +629,16 @@ function updateRecentQuizzes(data) {
             // Determinar classe para o tipo de quiz
             const quizTypeClass = getQuizTypeClass(quiz.quiz_type);
 
+            // Verificar se nc_count existe e é um número
+            const ncCount = typeof quiz.nc_count === 'number' ? quiz.nc_count : 0;
+
             return `
                 <tr>
                     <td>${formattedDate}</td>
                     <td>${quiz.username}</td>
                     <td><span class="quiz-type-pill ${quizTypeClass}">${getQuizTypeLabel(quiz.quiz_type)}</span></td>
                     <td>${quiz.questions_count}</td>
-                    <td class="nc-count">${quiz.nc_count}</td>
+                    <td class="nc-count">${ncCount}</td>
                     <td>
                         <button class="btn-action view-quiz-btn" 
                                 data-username="${quiz.username}" 

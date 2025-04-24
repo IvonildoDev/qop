@@ -30,7 +30,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 # Adicionar origens específicas para CORS
 CORS(app, supports_credentials=True, origins=[
     "http://127.0.0.1:5500",
-    "http://localhost:5500"
+    "http://localhost:5500",
+    "http://127.0.0.1:5000",
+    "http://localhost:5000"
 ])
 
 # Assegurar que o diretório de uploads existe
@@ -431,6 +433,8 @@ def get_user_history():
 # Nova rota para obter detalhes de um checklist específico
 @app.route('/quiz/<int:quiz_id>/details', methods=['GET'])
 def get_quiz_details(quiz_id):
+    app.logger.debug(f"Tentando acessar detalhes do quiz {quiz_id}")
+    
     if 'username' not in session:
         return jsonify({'message': 'User not logged in'}), 401
     
@@ -472,15 +476,16 @@ def get_quiz_details(quiz_id):
             'answer': row['answer']
         })
     
-    # Buscar observações
+    # Buscar observações do banco
     c.execute('''
-        SELECT observations FROM responses
-        WHERE username = ? AND quiz_type = ? AND timestamp = ?
-        LIMIT 1
-    ''', (username, quiz_type, timestamp))
+        SELECT text FROM observations 
+        WHERE username = ? AND timestamp = ? AND quiz_type = ?
+    ''', (username, timestamp, quiz_type))
     
-    observations_row = c.fetchone()
-    observations = observations_row['observations'] if observations_row and observations_row['observations'] else ""
+    observation_row = c.fetchone()
+    observations = observation_row['text'] if observation_row else ""
+    
+    app.logger.debug(f"Observações encontradas: {observations}")
     
     # Buscar informações de localização (apenas para pre_operacional)
     location = None
@@ -515,6 +520,7 @@ def get_quiz_details(quiz_id):
     
     conn.close()
     
+    app.logger.debug(f"Retornando detalhes do quiz {quiz_id} para {username}")
     return jsonify({
         'details': {
             'id': quiz_id,
@@ -754,44 +760,16 @@ def admin_statistics():
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         
-        if period == 'daily':
-            # Estatísticas diárias - agrupa por dia e usuário
-            c.execute('''
-                SELECT 
-                    date(timestamp) as date,
-                    username,
-                    quiz_type,
-                    COUNT(*) as count
-                FROM responses
-                GROUP BY date(timestamp), username, quiz_type
-                ORDER BY date DESC, username
-                LIMIT 100
-            ''')
-        elif period == 'monthly':
-            # Estatísticas mensais - agrupa por mês e usuário
-            c.execute('''
-                SELECT 
-                    strftime('%Y-%m', timestamp) as month,
-                    username,
-                    quiz_type,
-                    COUNT(*) as count
-                FROM responses
-                GROUP BY strftime('%Y-%m', timestamp), username, quiz_type
-                ORDER BY month DESC, username
-                LIMIT 100
-            ''')
-        else:
-            # Estatísticas gerais - totais por usuário
-            c.execute('''
-                SELECT 
-                    username,
-                    quiz_type,
-                    COUNT(*) as count
-                FROM responses
-                GROUP BY username, quiz_type
-                ORDER BY username, count DESC
-                LIMIT 100
-            ''')
+        # Modificar a consulta para contar checklists únicos, não perguntas
+        c.execute('''
+            SELECT 
+                username,
+                quiz_type,
+                COUNT(DISTINCT timestamp) as count  -- Alterado aqui: contar timestamps únicos
+            FROM responses
+            GROUP BY username, quiz_type
+            ORDER BY username, count DESC
+        ''')
         
         result = [dict(row) for row in c.fetchall()]
         
@@ -801,10 +779,10 @@ def admin_statistics():
                 r.username,
                 r.quiz_type,
                 r.timestamp,
-                COUNT(*) as questions_count,
-                (SELECT COUNT(*) FROM responses WHERE timestamp = r.timestamp AND username = r.username AND answer = 'NC') as nc_count
+                COUNT(DISTINCT r.question_number) as questions_count,
+                SUM(CASE WHEN r.answer = 'N/C' OR r.answer = 'NC' THEN 1 ELSE 0 END) as nc_count
             FROM responses r
-            GROUP BY r.timestamp, r.username
+            GROUP BY r.timestamp, r.username, r.quiz_type
             ORDER BY r.timestamp DESC
             LIMIT 50
         ''')
