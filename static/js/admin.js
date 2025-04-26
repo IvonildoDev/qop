@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const username = this.getAttribute('data-username');
                         const quizType = this.getAttribute('data-quiz-type');
                         const timestamp = this.getAttribute('data-timestamp');
-                        window.location.href = `/admin/quiz-details?username=${username}&type=${quizType}&timestamp=${timestamp}`;
+                        showQuizDetails(username, quizType, timestamp);
                     });
                 });
             } else {
@@ -182,34 +182,42 @@ document.addEventListener('DOMContentLoaded', function () {
         addUserBtn.addEventListener('click', () => {
             if (addUserModal) {
                 addUserModal.style.display = 'flex';
+                addUserModal.classList.add('visible');
             }
         });
     }
 
+    // Fechar modais
     if (modalCloseButtons.length > 0) {
         modalCloseButtons.forEach(button => {
             button.addEventListener('click', () => {
-                if (addUserModal) {
-                    addUserModal.style.display = 'none';
-                }
-                if (addUserForm) {
-                    addUserForm.reset();
+                const modal = button.closest('.admin-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.classList.remove('visible');
                 }
             });
         });
     }
 
-    // Clicar fora do modal para fechar
+    // Fechar modal clicando fora
     window.addEventListener('click', (event) => {
-        if (event.target === addUserModal) {
-            addUserModal.style.display = 'none';
-            addUserForm.reset();
+        if (event.target.classList.contains('admin-modal')) {
+            event.target.style.display = 'none';
+            event.target.classList.remove('visible');
         }
     });
 
-    // Adicionar usuário
+    // Impedir propagação do clique dentro do modal
+    document.querySelectorAll('.admin-modal-content').forEach(content => {
+        content.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    });
+
+    // Submissão do formulário
     if (addUserForm) {
-        addUserForm.addEventListener('submit', async function (e) {
+        addUserForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const username = document.getElementById('new-username').value;
@@ -379,7 +387,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Exibir observações
-            observationsElement.textContent = data.observations || 'Sem observações.';
+            if (data.observations) {
+                console.log("Observações encontradas:", data.observations);
+
+                html += `
+                    <div class="observations-section">
+                        <h4>Observações:</h4>
+                        <div class="observation-text">
+                            ${data.observations || "Nenhuma observação registrada"}
+                        </div>
+                    </div>
+                `;
+            } else {
+                console.log("Nenhuma observação encontrada para este checklist");
+
+                // Opcional: Mostrar mensagem de "sem observações"
+                html += `
+                    <div class="observations-section">
+                        <h4>Observações:</h4>
+                        <div class="observation-text">
+                            <em>Nenhuma observação registrada</em>
+                        </div>
+                    </div>
+                `;
+            }
 
             // Exibir localização se disponível
             if (data.location) {
@@ -399,17 +430,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Exibir fotos
             if (data.photos && data.photos.length > 0) {
-                photosContainer.innerHTML = `
-                    <h3>Fotos</h3>
-                    <div class="photos-grid">
-                        ${data.photos.map(photo => `
-                            <div class="photo-item">
-                                <img src="/${photo.path}" alt="Foto do checklist" class="quiz-photo">
-                            </div>
-                        `).join('')}
+                console.log("Fotos recebidas:", data.photos);
+
+                html += `
+                    <div class="photos-section">
+                        <h4>Fotos:</h4>
+                        <div class="photo-gallery">
+                `;
+
+                data.photos.forEach(photo => {
+                    // Garantir que o caminho começa com /
+                    const photoPath = photo.path.startsWith('/') ? photo.path : '/' + photo.path;
+
+                    html += `
+                        <div class="history-photo">
+                            <a href="${photoPath}" target="_blank">
+                                <img src="${photoPath}" alt="Foto do checklist" onerror="this.onerror=null; this.src='/static/images/image-error.png'; this.style.opacity='0.7';">
+                            </a>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
                     </div>
                 `;
-                photosContainer.style.display = 'block';
             } else {
                 photosContainer.style.display = 'none';
             }
@@ -546,21 +591,24 @@ function updateStatisticsChart(data, period) {
             }]
         };
 
-        // Criar o gráfico de pizza
+        // Criar o gráfico de pizza com opções aprimoradas
         chartCanvas.chart = new Chart(chartCanvas, {
             type: 'doughnut', // Pode usar 'pie' também
             data: pieData,
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
                 plugins: {
                     legend: {
                         position: 'right',
+                        align: 'center',
                         labels: {
                             font: {
                                 size: 14
                             },
-                            padding: 20
+                            padding: 20,
+                            boxWidth: 15
                         }
                     },
                     tooltip: {
@@ -573,6 +621,14 @@ function updateStatisticsChart(data, period) {
                                 return `${label}: ${value} (${percentage}%)`;
                             }
                         }
+                    }
+                },
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 10,
+                        top: 0,
+                        bottom: 0
                     }
                 }
             }
@@ -587,32 +643,57 @@ function updateUserStatistics(data) {
     const userStatsContainer = document.getElementById('user-statistics');
     if (!userStatsContainer) return;
 
-    // Agrupar por usuário, somando apenas checklists completos
+    // Usar os dados de recent_quizzes que já contêm a informação de username
     const userCounts = {};
 
-    // Processar as estatísticas
-    data.statistics.forEach(stat => {
-        if (!userCounts[stat.username]) {
-            userCounts[stat.username] = 0;
-        }
-        // Adicionar o número de checklists (não de perguntas)
-        userCounts[stat.username] += parseInt(stat.count);
-    });
+    if (data.recent_quizzes && data.recent_quizzes.length > 0) {
+        // Agrupar por usuário
+        data.recent_quizzes.forEach(quiz => {
+            const username = quiz.username;
+            if (!username) return; // Pular se não tiver username
 
-    // Converter para array e ordenar
-    const sortedUsers = Object.entries(userCounts)
-        .map(([username, count]) => ({ username, count }))
-        .sort((a, b) => b.count - a.count);
+            if (!userCounts[username]) {
+                userCounts[username] = 0;
+            }
 
-    // Gerar HTML
-    const html = sortedUsers.map(user => `
-        <div class="user-stat-item">
-            <span class="user-name">${user.username}</span>
-            <span class="user-count">${user.count}</span>
-        </div>
-    `).join('');
+            // Contar 1 checklist completo (não cada pergunta)
+            userCounts[username] += 1;
+        });
 
-    userStatsContainer.innerHTML = html || '<p>Nenhum dado disponível</p>';
+        // Eliminar contagens duplicadas do mesmo checklist
+        const uniqueSubmissions = new Map();
+        data.recent_quizzes.forEach(quiz => {
+            const key = `${quiz.username}_${quiz.timestamp}`;
+            if (!uniqueSubmissions.has(key)) {
+                uniqueSubmissions.set(key, true);
+
+                // Se o username existe, incrementa sua contagem (evita undefined)
+                if (quiz.username) {
+                    if (!userCounts[quiz.username]) {
+                        userCounts[quiz.username] = 0;
+                    }
+                    userCounts[quiz.username] = (userCounts[quiz.username] || 0) + 1;
+                }
+            }
+        });
+
+        // Converter para array e ordenar
+        const sortedUsers = Object.entries(userCounts)
+            .map(([username, count]) => ({ username, count }))
+            .sort((a, b) => b.count - a.count);
+
+        // Gerar HTML
+        const html = sortedUsers.map(user => `
+            <div class="user-stat-item">
+                <span class="user-name">${user.username}</span>
+                <span class="user-count">${user.count}</span>
+            </div>
+        `).join('');
+
+        userStatsContainer.innerHTML = html || '<p>Nenhum dado disponível</p>';
+    } else {
+        userStatsContainer.innerHTML = '<p>Nenhum dado de usuário disponível</p>';
+    }
 }
 
 // Função para atualizar a tabela de checklists recentes
@@ -622,28 +703,25 @@ function updateRecentQuizzes(data) {
 
     if (data.recent_quizzes && data.recent_quizzes.length > 0) {
         const rows = data.recent_quizzes.map(quiz => {
-            // Formatar data
+            // Formatar data para exibição
             const date = new Date(quiz.timestamp);
             const formattedDate = date.toLocaleString('pt-BR');
 
-            // Determinar classe para o tipo de quiz
-            const quizTypeClass = getQuizTypeClass(quiz.quiz_type);
-
-            // Verificar se nc_count existe e é um número
-            const ncCount = typeof quiz.nc_count === 'number' ? quiz.nc_count : 0;
+            // Garantir que estamos enviando o timestamp original intacto
+            const originalTimestamp = quiz.timestamp;
 
             return `
                 <tr>
                     <td>${formattedDate}</td>
                     <td>${quiz.username}</td>
-                    <td><span class="quiz-type-pill ${quizTypeClass}">${getQuizTypeLabel(quiz.quiz_type)}</span></td>
+                    <td><span class="quiz-type-pill ${getQuizTypeClass(quiz.quiz_type)}">${getQuizTypeLabel(quiz.quiz_type)}</span></td>
                     <td>${quiz.questions_count}</td>
-                    <td class="nc-count">${ncCount}</td>
+                    <td class="nc-count">${quiz.nc_count || 0}</td>
                     <td>
                         <button class="btn-action view-quiz-btn" 
                                 data-username="${quiz.username}" 
                                 data-type="${quiz.quiz_type}" 
-                                data-timestamp="${quiz.timestamp}">
+                                data-timestamp="${originalTimestamp}">
                             Ver Detalhes
                         </button>
                     </td>
@@ -653,19 +731,15 @@ function updateRecentQuizzes(data) {
 
         recentQuizzesBody.innerHTML = rows;
 
-        // Adicionar event listeners aos botões de detalhes
-        const viewButtons = recentQuizzesBody.querySelectorAll('.view-quiz-btn');
-        viewButtons.forEach(btn => {
-            btn.addEventListener('click', function () {
-                const username = this.dataset.username;
-                const type = this.dataset.type;
-                const timestamp = this.dataset.timestamp;
-
-                window.location.href = `/admin/quiz-details?username=${username}&type=${type}&timestamp=${timestamp}`;
+        // Adicionar event listeners aos botões
+        document.querySelectorAll('.view-quiz-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const username = this.getAttribute('data-username');
+                const quizType = this.getAttribute('data-type');
+                const timestamp = this.getAttribute('data-timestamp');
+                showQuizDetails(username, quizType, timestamp);
             });
         });
-    } else {
-        recentQuizzesBody.innerHTML = '<tr><td colspan="6">Nenhum checklist encontrado</td></tr>';
     }
 }
 
@@ -705,3 +779,386 @@ function getRandomColor() {
     }
     return color + '0.7)';
 }
+
+// Adicione esta verificação defensiva
+function setupEventListeners() {
+    // Para cada elemento que você adiciona um event listener
+    const element = document.getElementById('algum-elemento-que-nao-existe');
+    if (element) {
+        element.addEventListener('click', function () {
+            // código existente...
+        });
+    } else {
+        console.warn("Elemento 'algum-elemento-que-nao-existe' não encontrado no DOM");
+    }
+
+    // Repita para outros elementos...
+}
+
+// Chame a função após garantir que o DOM está carregado
+document.addEventListener('DOMContentLoaded', setupEventListeners);
+
+// Em admin.js - correção para o filtro de histórico
+document.addEventListener('DOMContentLoaded', function () {
+    // Verificar se todos os elementos existem antes de adicionar event listeners
+    const filterButton = document.getElementById('filter-history-button');
+    const dateFromInput = document.getElementById('history-date-from');
+    const dateToInput = document.getElementById('history-date-to');
+
+    if (filterButton) {
+        filterButton.addEventListener('click', function () {
+            const fromDate = dateFromInput ? dateFromInput.value : null;
+            const toDate = dateToInput ? dateToInput.value : null;
+            fetchHistory(fromDate, toDate, 7);
+        });
+    } else {
+        console.warn("Botão de filtro não encontrado");
+    }
+});
+
+// Modificação para corrigir a exibição do modal de detalhes
+function showQuizDetails(username, quizType, timestamp) {
+    console.log("Exibindo modal para:", username, quizType, timestamp);
+
+    const detailsModal = document.getElementById('quiz-details-modal');
+    const detailsContent = document.getElementById('quiz-details-content');
+
+    if (!detailsModal || !detailsContent) {
+        console.error('Modal de detalhes não encontrado!');
+        return;
+    }
+
+    // Garantir que o modal esteja visível
+    detailsModal.style.display = 'block';
+    detailsModal.classList.add('visible');  // Adicionar classe para animação
+
+    detailsContent.innerHTML = '<p class="loading">Carregando detalhes...</p>';
+
+    // Fazer a chamada à API para buscar os detalhes
+    fetch(`/admin/api/quiz-details?username=${encodeURIComponent(username)}&quiz_type=${encodeURIComponent(quizType)}&timestamp=${encodeURIComponent(timestamp)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Dados completos recebidos:", data);
+            console.log("Observações:", data.observations);
+
+            // Formatar data
+            const date = new Date(timestamp);
+            const formattedDate = date.toLocaleString('pt-BR');
+
+            // Construir HTML do conteúdo
+            let html = `
+                <div class="details-header">
+                    <h3>${getQuizTypeLabel(quizType)}</h3>
+                    <p class="details-timestamp">Data: ${formattedDate}</p>
+                    <p class="details-user">Usuário: ${username}</p>
+                </div>
+            `;
+
+            // Adicionar tabela de perguntas
+            html += `
+                <div class="questions-section">
+                    <h4>Perguntas e Respostas:</h4>
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                <th>Pergunta</th>
+                                <th>Resposta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Adicionar cada pergunta
+            data.questions.forEach(question => {
+                const answerClass =
+                    question.answer === "C" ? "answer-conformity" :
+                        question.answer === "NC" || question.answer === "N/C" ? "answer-nonconformity" :
+                            "answer-notapplicable";
+
+                const answerText =
+                    question.answer === "C" ? "Conforme" :
+                        question.answer === "NC" || question.answer === "N/C" ? "Não Conforme" :
+                            question.answer === "NA" || question.answer === "N/A" ? "Não se Aplica" :
+                                question.answer;
+
+                html += `
+                    <tr>
+                        <td>${question.text}</td>
+                        <td class="${answerClass}">${answerText}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Seção de observações
+            if (data.observations) {
+                html += `
+                    <div class="observations-section">
+                        <h4>Observações:</h4>
+                        <div class="observation-text">${data.observations}</div>
+                    </div>
+                `;
+            }
+
+            // Seção de localização
+            if (data.location) {
+                const location = typeof data.location === 'string'
+                    ? JSON.parse(data.location)
+                    : data.location;
+
+                html += `
+                    <div class="location-section">
+                        <h4>Localização:</h4>
+                        <div class="location-details">
+                            <p><strong>Latitude:</strong> ${location.latitude}</p>
+                            <p><strong>Longitude:</strong> ${location.longitude}</p>
+                            <p><strong>Precisão:</strong> ${location.accuracy} metros</p>
+                            <a href="https://maps.google.com/?q=${location.latitude},${location.longitude}" 
+                               target="_blank" class="map-link">
+                               <i class="fas fa-map-marker-alt"></i> Ver no Mapa
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Seção de fotos
+            if (data.photos && data.photos.length > 0) {
+                html += `
+                    <div class="photos-section">
+                        <h4>Fotos:</h4>
+                        <div class="photo-gallery">
+                `;
+
+                data.photos.forEach(photo => {
+                    // Garantir que o caminho está correto
+                    const photoPath = photo.path.replace(/\\/g, '/');
+
+                    html += `
+                        <div class="history-photo">
+                            <a href="/${photoPath}" target="_blank">
+                                <img src="/${photoPath}" alt="Foto do checklist" onerror="this.onerror=null; this.src='/static/images/image-error.png'; this.style.opacity='0.7';">
+                            </a>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Atualizar o conteúdo do modal
+            detailsContent.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Erro ao buscar detalhes:', error);
+            console.error('Parâmetros:', { username, quizType, timestamp });
+            detailsContent.innerHTML = `
+                <div class="error-message">
+                    <p>Erro ao carregar detalhes do checklist.</p>
+                    <p>Por favor, tente novamente.</p>
+                    <p><small>${error.message}</small></p>
+                </div>
+            `;
+        });
+}
+
+// Ajuste para garantir que os botões de detalhes funcionem 
+document.addEventListener('DOMContentLoaded', function () {
+    // Função para adicionar os event listeners aos botões de detalhes
+    function setupDetailButtons() {
+        const viewButtons = document.querySelectorAll('.view-quiz-btn');
+        console.log('Botões encontrados:', viewButtons.length);
+
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', function () {
+                console.log('Botão clicado!');
+                const username = this.getAttribute('data-username');
+                const quizType = this.getAttribute('data-type');
+                const timestamp = this.getAttribute('data-timestamp');
+
+                console.log('Exibindo detalhes para:', username, quizType, timestamp);
+                showQuizDetails(username, quizType, timestamp);
+            });
+        });
+    }
+
+    // Oberservador de mutação para detectar quando a tabela é atualizada
+    const observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            if (mutation.type === 'childList') {
+                setupDetailButtons();
+            }
+        });
+    });
+
+    // Observar mudanças na tabela de checklists recentes
+    const recentQuizzesBody = document.getElementById('recent-quizzes-body');
+    if (recentQuizzesBody) {
+        observer.observe(recentQuizzesBody, { childList: true });
+
+        // Também configurar os botões existentes
+        setupDetailButtons();
+    }
+
+    // Adicionar event listener global para botões de detalhes (delegação de eventos)
+    document.body.addEventListener('click', function (e) {
+        if (e.target.classList.contains('view-quiz-btn') ||
+            e.target.closest('.view-quiz-btn')) {
+
+            const btn = e.target.classList.contains('view-quiz-btn') ?
+                e.target : e.target.closest('.view-quiz-btn');
+
+            const username = btn.getAttribute('data-username');
+            const quizType = btn.getAttribute('data-type');
+            const timestamp = btn.getAttribute('data-timestamp');
+
+            showQuizDetails(username, quizType, timestamp);
+        }
+    });
+});
+
+// Adicionar no fim do seu admin.js dentro do bloco DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function () {
+    // Configurar fechamento do modal de detalhes
+    const closeButtons = document.querySelectorAll('.admin-modal-close');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const modal = this.closest('.admin-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Função para configurar os event listeners da seção de estatísticas
+    function setupStatisticsButtons() {
+        // Botões "Ver Detalhes" nas estatísticas
+        document.querySelectorAll('.stats-detail-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const username = this.getAttribute('data-username');
+                const quizType = this.getAttribute('data-type');
+
+                console.log(`Mostrando detalhes para usuário: ${username}, tipo: ${quizType}`);
+
+                // Filtrar os checklists deste usuário/tipo na tabela ou abrir um modal específico
+                filterChecklistsByUserAndType(username, quizType);
+            });
+        });
+
+        // Botões "Checklists" na seção de usuários
+        document.querySelectorAll('.user-checklists-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const username = this.getAttribute('data-username');
+
+                console.log(`Mostrando checklists do usuário: ${username}`);
+
+                // Filtrar apenas os checklists deste usuário
+                filterChecklistsByUser(username);
+            });
+        });
+    }
+
+    // Função para filtrar checklists por usuário e tipo
+    function filterChecklistsByUserAndType(username, quizType) {
+        // Mostrar o tab de checklists se não estiver visível
+        const checklistsTab = document.getElementById('checklists-tab');
+        if (checklistsTab) {
+            // Ativar a aba de checklists
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach(tab => tab.classList.remove('active'));
+
+            const checklistsTabButton = document.querySelector('[data-tab="checklists-tab"]');
+            if (checklistsTabButton) {
+                checklistsTabButton.classList.add('active');
+            }
+
+            // Mostrar o conteúdo da aba
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            checklistsTab.classList.add('active');
+
+            // Aplicar filtros na tabela
+            const rows = document.querySelectorAll('#recent-quizzes-body tr');
+            rows.forEach(row => {
+                const rowUsername = row.querySelector('td:nth-child(2)')?.textContent;
+                const rowType = row.querySelector('.quiz-type-pill')?.getAttribute('data-type');
+
+                if ((username === 'all' || rowUsername === username) &&
+                    (quizType === 'all' || rowType === quizType)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Exibir mensagem de filtro ativo
+            const filterMessage = document.getElementById('active-filter-message');
+            if (filterMessage) {
+                filterMessage.textContent = `Filtro: Usuário "${username}" ${quizType !== 'all' ? `, Tipo "${getQuizTypeLabel(quizType)}"` : ''}`;
+                filterMessage.style.display = 'block';
+            }
+        }
+    }
+
+    // Função para filtrar checklists apenas por usuário
+    function filterChecklistsByUser(username) {
+        filterChecklistsByUserAndType(username, 'all');
+    }
+
+    // Adicionar um observador de mutações para reconfigurar os botões quando o DOM mudar
+    const observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            if (mutation.type === 'childList' &&
+                (mutation.target.id === 'user-statistics' ||
+                    mutation.target.classList.contains('chart-content'))) {
+                setTimeout(setupStatisticsButtons, 100);
+            }
+        });
+    });
+
+    // Observar a tabela de estatísticas
+    const userStats = document.getElementById('user-statistics');
+    const chartContent = document.querySelector('.chart-content');
+
+    if (userStats) {
+        observer.observe(userStats, { childList: true, subtree: true });
+    }
+
+    if (chartContent) {
+        observer.observe(chartContent, { childList: true, subtree: true });
+    }
+
+    // Configurar botões existentes
+    setupStatisticsButtons();
+
+    // Adicionar um ouvinte de eventos ao botão "Limpar Filtros" se existir
+    const clearFilterButton = document.getElementById('clear-filter-btn');
+    if (clearFilterButton) {
+        clearFilterButton.addEventListener('click', function () {
+            const rows = document.querySelectorAll('#recent-quizzes-body tr');
+            rows.forEach(row => row.style.display = '');
+
+            const filterMessage = document.getElementById('active-filter-message');
+            if (filterMessage) {
+                filterMessage.style.display = 'none';
+            }
+        });
+    }
+});

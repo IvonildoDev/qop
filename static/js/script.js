@@ -719,79 +719,95 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Lógica de Histórico ---
+    // Modifique a função fetchHistory
     async function fetchHistory(fromDate = null, toDate = null, limit = 7) {
-        historyMessage.textContent = '';
-        historyList.innerHTML = '<li>Carregando histórico...</li>';
-
-        // Construir a URL com os parâmetros
-        let url = `${API_BASE_URL}/user/history`;
-        const params = new URLSearchParams();
-
-        if (fromDate) params.append('from_date', fromDate);
-        if (toDate) params.append('to_date', toDate);
-        params.append('limit', limit);
-
-        url += '?' + params.toString();
-
         try {
-            const response = await fetch(url, {
-                credentials: 'include'
-            });
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '<li>Carregando histórico...</li>';
 
+            let url = '/user/history';
+            const params = new URLSearchParams();
+
+            // Garantir formato correto das datas
+            if (fromDate && fromDate.trim() !== '') {
+                params.append('from_date', fromDate);
+                console.log("Filtro: data inicial =", fromDate);
+            }
+
+            if (toDate && toDate.trim() !== '') {
+                params.append('to_date', toDate);
+                console.log("Filtro: data final =", toDate);
+            }
+
+            if (limit > 0) {
+                params.append('limit', limit);
+            }
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            console.log("URL de consulta:", url);
+
+            const response = await fetch(url, { credentials: 'include' });
             const data = await response.json();
 
-            if (response.ok) {
-                historyList.innerHTML = '';
+            console.log("Dados de histórico recebidos:", data);
 
-                if (data.history && data.history.length > 0) {
-                    data.history.forEach(item => {
-                        const li = document.createElement('li');
+            historyList.innerHTML = '';
 
-                        // Formatar a data em formato brasileiro
-                        const formattedDate = new Date(item.last_attempt).toLocaleString('pt-BR');
+            if (data.history && data.history.length > 0) {
+                let html = '';
+                data.history.forEach(item => {
+                    const date = new Date(item.last_attempt);
+                    const formattedDate = date.toLocaleString('pt-BR');
 
-                        li.innerHTML = `
-                            <strong>${item.quiz_description || item.quiz_type}</strong> - 
-                            <span class="history-count">${item.question_count} perguntas</span> - 
-                            <span class="history-date">${formattedDate}</span>
-                        `;
+                    let quizClass = 'quiz-default';
+                    if (item.quiz_type === 'pre_operacional') quizClass = 'quiz-pre';
+                    else if (item.quiz_type === 'caminhao') quizClass = 'quiz-caminhao';
+                    else if (item.quiz_type === 'carga') quizClass = 'quiz-carga';
 
-                        // Guardar dados para detalhes
-                        li.dataset.historyId = item.id;
-                        li.dataset.quizType = item.quiz_type;
-                        li.dataset.timestamp = item.last_attempt;
+                    html += `
+                        <li class="history-item">
+                            <div class="history-info">
+                                <div class="history-type ${quizClass}">${item.quiz_description}</div>
+                                <div class="history-date">${formattedDate}</div>
+                            </div>
+                            <button class="view-details-btn" data-id="${item.id}">
+                                <i class="fas fa-eye"></i> Ver Detalhes
+                            </button>
+                        </li>
+                    `;
+                });
 
-                        // Ao clicar, mostrar detalhes
-                        li.addEventListener('click', () => showHistoryDetails(item.id));
+                historyList.innerHTML = html;
 
-                        historyList.appendChild(li);
+                // Adicionar event listeners aos botões
+                document.querySelectorAll('.view-details-btn').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const id = this.getAttribute('data-id');
+                        showHistoryDetails(id);
                     });
-                } else {
-                    historyList.innerHTML = '<li class="no-data">Nenhum histórico encontrado.</li>';
+                });
+
+                // Mostrar botão "Ver mais" se necessário
+                if (limit > 0 && data.history.length >= limit) {
+                    const loadMoreBtn = document.getElementById('load-more-history');
+                    if (loadMoreBtn) loadMoreBtn.style.display = 'block';
                 }
             } else {
-                displayMessage(historyMessage, data.message || 'Erro ao buscar histórico.', true);
-
-                if (response.status === 401) {
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 2000);
-                }
-
-                historyList.innerHTML = '';
+                historyList.innerHTML = '<li class="empty-history">Nenhum checklist encontrado no histórico.</li>';
             }
         } catch (error) {
             console.error('Erro ao buscar histórico:', error);
-            displayMessage(historyMessage, 'Erro de conexão ao buscar histórico.', true);
-            historyList.innerHTML = '';
+            document.getElementById('history-list').innerHTML =
+                '<li class="error-history">Erro ao carregar histórico. Tente novamente.</li>';
         }
     }
 
     // Modificar a função showHistoryDetails
     async function showHistoryDetails(quizId) {
         try {
-            // Código existente...
-
             const response = await fetch(`/quiz/${quizId}/details`, {
                 credentials: 'include'
             });
@@ -840,17 +856,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            // Seção de observações (já existente)
-            html += `
-                <div class="observations-section">
-                    <h4>Observações:</h4>
-                    <div class="observation-text">
-                        ${data.details.observations ? data.details.observations : 'Nenhuma observação registrada.'}
+            // Seção de observações - claramente separada
+            if (data.details.observations) {
+                html += `
+                    <div class="observations-section">
+                        <h4>Observações:</h4>
+                        <div class="observation-text">
+                            ${data.details.observations}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
 
-            // Se houver fotos, adicionar seção de fotos
+            // Seção de localização - separada das observações
+            if (data.details.location) {
+                const location = typeof data.details.location === 'string'
+                    ? JSON.parse(data.details.location)
+                    : data.details.location;
+
+                html += `
+                    <div class="location-section">
+                        <h4>Localização:</h4>
+                        <div class="location-details">
+                            <p><strong>Latitude:</strong> ${location.latitude}</p>
+                            <p><strong>Longitude:</strong> ${location.longitude}</p>
+                            <p><strong>Precisão:</strong> ${location.accuracy} metros</p>
+                            <a href="https://maps.google.com/?q=${location.latitude},${location.longitude}" 
+                               target="_blank" class="map-link">
+                               <i class="fas fa-map-marker-alt"></i> Ver no Mapa
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Seção de fotos (se existirem)
             if (data.details.photos && data.details.photos.length > 0) {
                 html += `
                     <div class="photos-section">
@@ -933,8 +973,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Carregar checklists disponíveis
             fetchQuizzes();
 
-            // Carregar histórico
-            fetchHistory();
+            // Carregar histórico limitado aos 7 mais recentes
+            fetchHistory(null, null, 7);  // Especifique explicitamente o limite
         }
     }
 

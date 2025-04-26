@@ -96,17 +96,24 @@
                 </div>
             </div>
 
-            <div class="statistics-grid">
-                <div class="statistics-chart">
-                    <h3>Checklists por <span id="period-label">Dia</span></h3>
-                    <canvas id="quizzes-chart"></canvas>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Distribuição de Checklists por Tipo</h3>
+                        <div class="chart-period">
+                            Por <span id="period-label">Dia</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="quizzes-chart"></canvas>
+                    </div>
                 </div>
 
-                <div class="statistics-by-user">
-                    <h3>Checklists por Usuário</h3>
-                    <div id="user-statistics" class="user-stats-container">
-                        <p>Carregando dados...</p>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Checklists por Usuário</h3>
                     </div>
+                    <div id="user-statistics" class="user-stats-container"></div>
                 </div>
             </div>
 
@@ -158,6 +165,19 @@
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal para exibir detalhes do checklist -->
+    <div id="quiz-details-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h3>Detalhes do Checklist</h3>
+                <button class="admin-modal-close">&times;</button>
+            </div>
+            <div id="quiz-details-content" class="modal-body">
+                <p>Carregando detalhes...</p>
+            </div>
         </div>
     </div>
 
