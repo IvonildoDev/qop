@@ -372,47 +372,54 @@ def get_user_history():
     
     username = session['username']
     
-    # Obter parâmetros de filtro por data (opcional)
+    # Parâmetros da requisição
     from_date = request.args.get('from_date')
     to_date = request.args.get('to_date')
-    limit = request.args.get('limit', 7)  # Padrão: 7 checklists
+    limit = request.args.get('limit', '7')
     
-    try:
-        limit = int(limit)
-    except ValueError:
-        limit = 7
+    # Debug para ajudar a identificar o problema
+    app.logger.debug(f"Filtro de histórico - de: {from_date}, até: {to_date}, limit: {limit}")
     
-    conn = sqlite3.connect('quiz.db')
-    conn.row_factory = sqlite3.Row  # Para obter resultados como dicts
-    c = conn.cursor()
-    
-    # Construir a consulta SQL base
     query = '''
-        SELECT r.quiz_type, COUNT(DISTINCT r.question_number) as question_count, 
-               MAX(r.timestamp) as last_attempt, qt.description as quiz_description,
-               MIN(r.id) as id
+        SELECT 
+            MAX(r.id) AS id, 
+            r.quiz_type, 
+            qt.description AS quiz_description, 
+            COUNT(DISTINCT r.question_number) AS question_count, 
+            MAX(r.timestamp) AS last_attempt
         FROM responses r
-        LEFT JOIN quiz_types qt ON r.quiz_type = qt.name
+        JOIN quiz_types qt ON r.quiz_type = qt.name
         WHERE r.username = ?
     '''
     
     params = [username]
     
-    # Adicionar filtros de data se fornecidos
+    # Adicionar filtros de data se especificados
     if from_date:
         query += " AND r.timestamp >= ?"
-        params.append(f"{from_date} 00:00:00")
+        # Garantir que a data comece no início do dia
+        start_date = from_date + " 00:00:00" if " " not in from_date else from_date
+        params.append(start_date)
     
     if to_date:
         query += " AND r.timestamp <= ?"
-        params.append(f"{to_date} 23:59:59")
+        # Garantir que a data vá até o fim do dia
+        end_date = to_date + " 23:59:59" if " " not in to_date else to_date
+        params.append(end_date)
     
     # Agrupar e ordenar
-    query += " GROUP BY r.quiz_type, DATE(r.timestamp) ORDER BY r.timestamp DESC"
+    query += " GROUP BY r.timestamp, r.username, r.quiz_type ORDER BY r.timestamp DESC"
     
-    # Adicionar limite
-    if limit > 0:
-        query += f" LIMIT {limit}"
+    # Aplicar limite se especificado
+    if limit and int(limit) > 0:
+        query += f" LIMIT {int(limit)}"
+        
+    app.logger.debug(f"Query final: {query}")
+    app.logger.debug(f"Parâmetros: {params}")
+    
+    conn = sqlite3.connect('quiz.db')
+    conn.row_factory = sqlite3.Row  # Para obter resultados como dicts
+    c = conn.cursor()
     
     c.execute(query, params)
     
@@ -507,16 +514,15 @@ def get_quiz_details(quiz_id):
             }
     
     # Buscar fotos
-    c.execute('''
-        SELECT rp.photo_path
+    c.execute("""
+        SELECT rp.photo_path as path
         FROM response_photos rp
         JOIN responses r ON rp.response_id = r.id
         WHERE r.username = ? AND r.quiz_type = ? AND r.timestamp = ?
-    ''', (username, quiz_type, timestamp))
+    """, (username, quiz_type, timestamp))
     
-    photos = []
-    for row in c.fetchall():
-        photos.append({'path': row['photo_path']})
+    photos = [{'path': row['path']} for row in c.fetchall()]
+    app.logger.debug(f"Fotos encontradas: {photos}")
     
     conn.close()
     
@@ -660,79 +666,93 @@ def admin_quiz_details():
 @app.route('/admin/api/quiz-details', methods=['GET'])
 def api_quiz_details():
     if 'is_admin' not in session or not session['is_admin']:
-        return jsonify({'error': 'Unauthorized'}), 401
+        return jsonify({'error': 'Acesso não autorizado'}), 401
     
+    # Obter parâmetros da requisição
     username = request.args.get('username')
-    quiz_type = request.args.get('type')
+    quiz_type = request.args.get('quiz_type')
     timestamp = request.args.get('timestamp')
     
-    if not all([username, quiz_type, timestamp]):
-        return jsonify({'error': 'Parâmetros insuficientes'}), 400
+    app.logger.debug(f"Parâmetros recebidos: {username}, {quiz_type}, {timestamp}")
     
-    conn = sqlite3.connect('quiz.db')
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    if not username or not quiz_type or not timestamp:
+        return jsonify({'error': 'Parâmetros incompletos'}), 400
     
     try:
-        # Buscar perguntas e respostas
-        c.execute('''
-            SELECT r.id, r.question_number, r.question_text, r.answer
-            FROM responses r
-            WHERE r.username = ? AND r.quiz_type = ? AND r.timestamp = ?
-            ORDER BY r.question_number
-        ''', (username, quiz_type, timestamp))
+        conn = sqlite3.connect('quiz.db')
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
         
-        responses = c.fetchall()
-        questions = []
-        first_response_id = None
+        # Verificar se o timestamp precisa de ajuste (formato T vs espaço)
+        c.execute("""
+            SELECT DISTINCT timestamp 
+            FROM responses 
+            WHERE username = ? AND quiz_type = ? AND (timestamp = ? OR timestamp LIKE ?)
+            LIMIT 1
+        """, (username, quiz_type, timestamp, timestamp.split('T')[0] + '%'))
         
-        for row in responses:
-            if first_response_id is None:
-                first_response_id = row['id']
-                
-            questions.append({
-                'number': row['question_number'],
-                'text': row['question_text'],
-                'answer': row['answer']
-            })
+        result = c.fetchone()
+        if result:
+            # Usar o timestamp exato do banco
+            actual_timestamp = result['timestamp']
+            app.logger.debug(f"Timestamp encontrado no banco: {actual_timestamp}")
+        else:
+            app.logger.debug(f"Nenhum registro encontrado com timestamp similar")
+            return jsonify({'error': 'Checklist não encontrado'}), 404
+        
+        # Buscar perguntas e respostas usando o timestamp correto
+        c.execute("""
+            SELECT 
+                question_number,
+                question_text as text,
+                answer
+            FROM responses
+            WHERE username = ? AND quiz_type = ? AND timestamp = ?
+            ORDER BY question_number
+        """, (username, quiz_type, actual_timestamp))
+        
+        questions = [dict(row) for row in c.fetchall()]
         
         # Buscar observações
-        c.execute('''
-            SELECT text FROM observations
-            WHERE username = ? AND quiz_type = ? AND timestamp = ?
-        ''', (username, quiz_type, timestamp))
+        c.execute("""
+            SELECT observations 
+            FROM responses 
+            WHERE username = ? AND quiz_type = ? AND timestamp = ? 
+            AND observations IS NOT NULL AND observations != ''
+            LIMIT 1
+        """, (username, quiz_type, actual_timestamp))
         
-        observations_row = c.fetchone()
-        observations = observations_row['text'] if observations_row else ""
+        obs_row = c.fetchone()
+        observations = obs_row['observations'] if obs_row else ""
         
         # Buscar localização
+        c.execute("""
+            SELECT l.latitude, l.longitude, l.accuracy
+            FROM locations l
+            JOIN responses r ON l.response_id = r.id
+            WHERE r.username = ? AND r.quiz_type = ? AND r.timestamp = ?
+            LIMIT 1
+        """, (username, quiz_type, actual_timestamp))
+        
+        loc_row = c.fetchone()
         location = None
-        if first_response_id:
-            c.execute('''
-                SELECT latitude, longitude, accuracy
-                FROM locations
-                WHERE response_id = ?
-            ''', (first_response_id,))
-            
-            loc_row = c.fetchone()
-            if loc_row:
-                location = {
-                    'latitude': loc_row['latitude'],
-                    'longitude': loc_row['longitude'],
-                    'accuracy': loc_row['accuracy']
-                }
+        if loc_row:
+            location = {
+                'latitude': loc_row['latitude'],
+                'longitude': loc_row['longitude'],
+                'accuracy': loc_row['accuracy']
+            }
         
         # Buscar fotos
-        photos = []
-        if first_response_id:
-            c.execute('''
-                SELECT photo_path
-                FROM response_photos
-                WHERE response_id = ?
-            ''', (first_response_id,))
-            
-            for photo_row in c.fetchall():
-                photos.append({'path': photo_row['photo_path']})
+        c.execute("""
+            SELECT rp.photo_path as path
+            FROM response_photos rp
+            JOIN responses r ON rp.response_id = r.id
+            WHERE r.username = ? AND r.quiz_type = ? AND r.timestamp = ?
+        """, (username, quiz_type, actual_timestamp))
+        
+        photos = [{'path': row['path']} for row in c.fetchall()]
+        app.logger.debug(f"Fotos encontradas: {photos}")
         
         conn.close()
         
@@ -740,40 +760,55 @@ def api_quiz_details():
             'questions': questions,
             'observations': observations,
             'location': location,
-            'photos': photos
-        })
+            'photos': photos,
+            'username': username,
+            'quiz_type': quiz_type,
+            'timestamp': actual_timestamp
+        }), 200
         
     except Exception as e:
-        app.logger.error(f"Erro ao buscar detalhes do quiz: {str(e)}")
-        conn.close()
-        return jsonify({'error': f'Erro ao buscar detalhes: {str(e)}'}), 500
+        app.logger.error(f"Erro ao buscar detalhes: {str(e)}")
+        app.logger.exception(e)  # Adicione esta linha para ver o traceback completo
+        return jsonify({'error': f'Erro no servidor: {str(e)}'}), 500
 
 @app.route('/admin/api/statistics', methods=['GET'])
 def admin_statistics():
     if 'is_admin' not in session or not session['is_admin']:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    period = request.args.get('period', 'daily')  # daily, monthly, all
+    period = request.args.get('period', 'daily')
+    app.logger.info(f"Obtendo estatísticas administrativas para período: {period}")
     
     try:
         conn = sqlite3.connect('quiz.db')
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         
-        # Modificar a consulta para contar checklists únicos, não perguntas
-        c.execute('''
+        # 1. Obter estatísticas por período
+        date_format = '%Y-%m-%d'  # Formato padrão para agrupar por dia
+        date_extract = "strftime('%Y-%m-%d', timestamp)"
+        
+        if period == 'monthly':
+            date_format = '%Y-%m'
+            date_extract = "strftime('%Y-%m', timestamp)"
+        elif period == 'yearly':
+            date_format = '%Y'
+            date_extract = "strftime('%Y', timestamp)"
+        
+        # Consulta principal para estatísticas por período e tipo
+        c.execute(f'''
             SELECT 
-                username,
+                {date_extract} as time_period,
                 quiz_type,
-                COUNT(DISTINCT timestamp) as count  -- Alterado aqui: contar timestamps únicos
+                COUNT(DISTINCT timestamp) as count
             FROM responses
-            GROUP BY username, quiz_type
-            ORDER BY username, count DESC
+            GROUP BY time_period, quiz_type
+            ORDER BY time_period
         ''')
         
-        result = [dict(row) for row in c.fetchall()]
+        statistics = [dict(row) for row in c.fetchall()]
         
-        # Buscar lista de todos os checklists feitos
+        # 2. Obter dados recentes sobre checklists
         c.execute('''
             SELECT 
                 r.username,
@@ -792,13 +827,13 @@ def admin_statistics():
         conn.close()
         
         return jsonify({
-            'statistics': result,
+            'statistics': statistics,
             'recent_quizzes': recent_quizzes
-        })
+        }), 200
         
     except Exception as e:
-        app.logger.error(f"Erro ao buscar estatísticas: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Erro nas estatísticas admin: {str(e)}")
+        return jsonify({'error': f'Erro ao processar estatísticas: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # Run the Flask app in debug mode
