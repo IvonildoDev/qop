@@ -5,25 +5,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QOP - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
+    </head>
 
-<body>
-    <!-- Header com logo QOP -->
-    <header class="app-header">
-        <div class="header-container">
-            <div class="logo-container">
-                <div class="logo">QOP</div>
+<body class="login-page">
+    <div class="login-shell">
+        <aside class="login-brand">
+            <div class="logo">QOP</div>
+            <div>
+                <h1>Checklists operacionais, sem papel.</h1>
+                <p>Registre inspeções, anexe fotos e acompanhe as não conformidades da operação em um só lugar.</p>
             </div>
-        </div>
-    </header>
+            <small>&copy; 2025 QOP · Desenvolvido por Ivonildo Lima</small>
+        </aside>
 
-    <!-- Conteúdo principal centralizado -->
     <div class="login-container">
         <div class="login-box">
-            <h2>Sistema de Checklists</h2>
+            <h2>Entrar</h2>
+            <p class="login-sub">Acesse com seu usuário e senha.</p>
             <form id="login-form">
                 <div class="input-group">
                     <label for="username">Nome de Usuário</label>
@@ -39,47 +42,7 @@
         </div>
     </div>
 
-    <!-- Footer com informação do desenvolvedor -->
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-column">
-                <h4>Sistema QOP</h4>
-                <p>Plataforma completa para gestão de checklists operacionais, garantindo eficiência e conformidade em
-                    todas as operações.</p>
-            </div>
-
-            <div class="footer-column">
-                <h4>Links Úteis</h4>
-                <ul class="footer-links">
-                    <li><a href="#">Instruções de Uso</a></li>
-                    <li><a href="#">Política de Privacidade</a></li>
-                    <li><a href="#">Termos de Serviço</a></li>
-                    <li><a href="#">Suporte</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-column footer-contact">
-                <h4>Contato</h4>
-                <p><i class="fas fa-envelope"></i> suporte@qop.com.br</p>
-                <p><i class="fas fa-phone"></i> (11) 1234-5678</p>
-                <p><i class="fas fa-map-marker-alt"></i> Pilar AL</p>
-
-                <div class="footer-social">
-                    <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer-container">
-            <div class="footer-bottom">
-                <p>&copy; 2025 Sistema QOP. Todos os direitos reservados.</p>
-                <p class="developer-credit">Desenvolvido por <strong>Ivonildo Lima</strong></p>
-            </div>
-        </div>
-    </footer>
+    </div>
 
     <script src="/static/js/login.js"></script>
 </body>

@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Funções Auxiliares ---
     function displayMessage(element, message, isError = false) {
         element.textContent = message;
-        element.style.color = isError ? 'red' : 'green';
+        element.style.color = isError ? '#b3261e' : '#1f7a4d';
         element.style.display = 'block';
     }
 
@@ -653,8 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Título de confirmação
                 const confirmText = document.createElement('h3');
                 confirmText.textContent = 'Checklist enviado com sucesso!';
-                confirmText.style.color = 'green';
-                confirmText.style.textAlign = 'center';
+                                confirmText.style.textAlign = 'center';
                 postSubmitDiv.appendChild(confirmText);
 
                 // Botões de opção

@@ -578,16 +578,13 @@ function updateStatisticsChart(data, period) {
             datasets: [{
                 data: Object.values(quizCounts),
                 backgroundColor: [
-                    'rgba(21, 101, 192, 0.7)',  // Pré-Operacional (azul)
-                    'rgba(230, 81, 0, 0.7)',    // Caminhão (laranja)
-                    'rgba(85, 139, 47, 0.7)'    // Carga (verde)
+                    '#264f8c',  // Pré-Operacional (azul)
+                    '#c98a14',  // Caminhão (âmbar)
+                    '#1f7a4d'   // Carga (verde)
                 ],
-                borderColor: [
-                    'rgba(21, 101, 192, 1)',
-                    'rgba(230, 81, 0, 1)',
-                    'rgba(85, 139, 47, 1)'
-                ],
-                borderWidth: 1
+                borderColor: '#ffffff',
+                borderWidth: 3,
+                hoverOffset: 4
             }]
         };
 
@@ -605,10 +602,14 @@ function updateStatisticsChart(data, period) {
                         align: 'center',
                         labels: {
                             font: {
-                                size: 14
+                                family: "'Plus Jakarta Sans', sans-serif",
+                                size: 13
                             },
-                            padding: 20,
-                            boxWidth: 15
+                            color: '#3b434f',
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 8
                         }
                     },
                     tooltip: {
@@ -764,11 +765,11 @@ function getQuizTypeClass(type) {
 
 function getQuizTypeColor(type) {
     const colors = {
-        'pre_operacional': 'rgba(21, 101, 192, 0.7)',
-        'caminhao': 'rgba(230, 81, 0, 0.7)',
-        'carga': 'rgba(85, 139, 47, 0.7)'
+        'pre_operacional': '#264f8c',
+        'caminhao': '#c98a14',
+        'carga': '#1f7a4d'
     };
-    return colors[type] || 'rgba(33, 33, 33, 0.7)';
+    return colors[type] || '#5f6672';
 }
 
 function getRandomColor() {
