@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b5cab">
+    <title>QOP - Entrar</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="centro">
+    <main class="cartao login">
+        <div class="login-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <h1>QOP</h1>
+        <p class="sub">Checklists de campo</p>
+        <form id="form-login" autocomplete="on">
+            <label>Usuário
+                <input name="login" autocomplete="username" autocapitalize="none" required autofocus>
+            </label>
+            <label>Senha
+                <span class="campo-senha">
+                    <input name="senha" type="password" autocomplete="current-password" required>
+                    <button type="button" class="toggle-senha" aria-label="Mostrar senha" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </span>
+            </label>
+            <p id="msg" class="erro-texto" role="alert"></p>
+            <button class="btn primario grande" type="submit"><span class="rotulo">Entrar</span></button>
+        </form>
+    </main>
+    <script type="module" src="/js/login.js"></script>
+    <script type="module" src="/js/sw-registro.js"></script>
+</body>
+</html>
